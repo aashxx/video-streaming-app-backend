@@ -3,21 +3,25 @@ const router = express.Router();
 const { transcodeVideo, uploadToFirebase } = require('../services/transcodeService');
 
 router.post('/transcode', async (req, res) => {
-    const { quality } = req.body;
-    const videoFilePath = 'C:/Users/Administrator/Documents/programming/webdev/video-streaming-backend/raya.mp4'; // Path to your high-quality video in Firebase Storage
+    const { movieURL, title } = req.body;
 
     try {
-        // Transcode video to the selected quality
-        const transcodedFilePath = await transcodeVideo(videoFilePath, quality);
 
-        // Upload transcoded video to Firebase Storage
-        const transcodedFileDestination = `movies/video_${quality}.mp4`;
-        await uploadToFirebase(transcodedFilePath, transcodedFileDestination);
+        const transcodedVideoURLs = {};
+        const qualityOptions = ['360p', '480p', '720p'];
 
-        res.status(200).send('Video transcoded and uploaded successfully');
+        for(const quality of qualityOptions) {
+            const transcodedFilePath = await transcodeVideo(movieURL, quality);
+            const transcodedFileDestination = `movies/${title}/${title}_${quality}.mp4`;
+            const downloadURL = await uploadToFirebase(transcodedFilePath, transcodedFileDestination);
+            transcodedVideoURLs[quality] = downloadURL;
+        }
+
+        res.status(200).json(transcodedVideoURLs);
+
     } catch (error) {
-        console.error('Error transcoding video:', error);
-        res.status(500).send('Error transcoding video');
+        console.error('Error transcoding and uploading video:', error);
+        res.status(500).send('Error transcoding and uploading video');
     }
 });
 
